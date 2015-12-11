@@ -7,16 +7,14 @@ from time import sleep
 
 # indicoio.config.api_key = 'f40bb2f1a1746e98919452261d38003a'
 # f  = open('transcript.txt', 'w')
-html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=29400').read()
+html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=110758').read()
 soup = BeautifulSoup(html)
 page = soup.findAll('td')
 
-text = []
-moderators = []
-participants = []
-titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice', 'former']
+titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice', 'former', 'moderator ']
 
 def get_transcript(page):
+    text = []
     for ele in page:
         if (ele.find('p') is not None) and (ele.find('br') is not None):
             debateBody = ele.findChildren('span', {'class': 'displaytext'}) + ele.findAll('p')
@@ -25,7 +23,7 @@ def get_transcript(page):
     for para in debateBody:
         text.append(para.findAll(text=True))
 
-    return list(chain.from_iterable(text))
+    return [ele.lower() for ele in list(chain.from_iterable(text))]
 
 def find_italic(page):
     ''' '''
@@ -52,7 +50,7 @@ def find_italic(page):
     people = [key for key in italics if italics[key] > 2]
     return people
 
-def get_transcripts():
+def get_transcript_list():
     html = urllib.urlopen('http://www.presidency.ucsb.edu/debates.php').read()
     soup = BeautifulSoup(html)
     page = soup.findAll('table', {'width': 740})#[0].findAll('tr')
@@ -117,15 +115,7 @@ def find_normal(page):
     people = [key for key in normals if normals[key] > 2]
     return people
 
-def get_people(address, titles):
-
-    html = urllib.urlopen(address).read()
-    soup = BeautifulSoup(html)
-    page = soup.findAll('td')
-
-    text = []
-    moderators = []
-    participants = []
+def get_people(page, titles):
 
     bolds = find_bold(page)
     italics = find_italic(page)
@@ -154,8 +144,43 @@ def get_people(address, titles):
 
     return people
 
-debates = get_transcripts()
-print debates
-# for debate in debates:
-#     print get_people(debate, titles)
-print get_people('http://www.presidency.ucsb.edu/ws/index.php?pid=29400', titles)
+def clean_transcript(transcript, titles):
+    clean = []
+    for line in transcript:
+        for title in titles:
+            line = line.replace(title, '')
+        clean.append(line)
+
+    return clean
+
+def parse_transcript(participants, transcript):
+    parsed = {}
+
+    for participant in participants:
+        parsed[participant] = []
+
+    parsed['Unclaimed'] = []
+    prev_par = 'Unclaimed'
+    for line in transcript:
+        claimed = False
+        for participant in participants:
+            if participant in line[0:len(participant)]:
+                parsed[participant].append(line)
+                prev_par = participant
+                claimed = True
+                break
+
+        if not claimed:
+            parsed[prev_par].append(line)
+
+    return parsed
+
+
+transcript = get_transcript(page)
+participants = get_people(page, titles)
+clean_transcript = clean_transcript(transcript, titles)
+parsed = parse_transcript(participants, clean_transcript)
+for key in parsed:
+    for line in parsed[key]:
+        print key.upper(), line, '\n'
+
