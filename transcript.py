@@ -196,7 +196,7 @@ class Transcript():
 
         return clean
 
-    def parse_transcript(participants, transcript):
+    def parse_transcript(self, participants, transcript):
         ''' Identify the speaker of each paragraph in the transcript.
 
             Return a dictionary of list of transcript lines mapped to each participant.
@@ -207,8 +207,8 @@ class Transcript():
         for participant in participants:
             parsed[participant] = []
 
-        parsed['Unclaimed'] = []
-        prev_par = 'Unclaimed'
+        parsed['unclaimed'] = []
+        prev_par = 'unclaimed'
 
 
         for line in transcript:
@@ -217,7 +217,7 @@ class Transcript():
             for participant in participants:
                 # Once found, break loop, set previous speaker
                 if participant in line[0:len(participant)]:
-                    parsed[participant].append(line)
+                    parsed[participant].append(line[len(participant)+2:])
                     prev_par = participant
                     claimed = True
                     break
@@ -226,3 +226,45 @@ class Transcript():
                 parsed[prev_par].append(line)
 
         return parsed
+
+    def count_transcript(self, parsed, participants):
+        ''' Calculate all counting decision variables.
+
+            Returns dictionary of lists which contain:
+                [word count, name mentions, applause and laughter]
+        '''
+        mentions = {}
+        words = {}
+        noises = {}
+        count = {}
+
+        # Initializes counts for each dictionary
+        for participant in participants:
+            mentions[participant] = 0
+            words[participant] = 0
+            noises[participant] = 0
+
+        # Count participant mentions in each paragraph
+        for para in parsed.values():
+            for line in para:
+                for participant in participants:
+                    if participant in line:
+                        mentions[participant] += 1
+
+        # Count words in each participant's entry
+        for participant in parsed.keys():
+            for line in parsed[participant]:
+                try:
+                    words[participant] += len(line.split())
+                except:
+                    pass
+
+                # Count applause or laughter
+                if 'applause' in line or 'laughter' in line:
+                    noises[participant] += 1
+
+        # Combine dictionaries into one counting dict
+        for participant in participants:
+            count[participant] = [words[participant], mentions[participant], noises[participant]]
+
+        return count
