@@ -292,7 +292,8 @@ class Transcript():
 
         for participant in parsed.keys():
             for line in parsed[participant]:
-                senti += sentiment(line)
+                just_senti = sentiment(line)
+                senti += just_senti[0]
                 average_count += 1
             senti_patt[participant] = senti/average_count
 
@@ -305,14 +306,17 @@ class Transcript():
                 average_count += 1
             senti_indi[participant] = senti/average_count
 
-        senti = 0
+        conserv = 0
+        lib = 0
         average_count = 0
 
         for participant in parsed.keys():
             for line in parsed[participant]:
-                senti += indicoio.political(line)
+                poli_get = indicoio.political(line)
+                conserv += poli_get['conservative']
+                lib += poli_get['liberal']
                 average_count += 1
-            poli_senti[participant] = senti/average_count
+            poli_senti[participant] = [conserv/average_count, lib/average_count]
 
         for participant in participants:
             sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
