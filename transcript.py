@@ -2,6 +2,9 @@ import urllib
 from BeautifulSoup import BeautifulSoup
 import re
 from itertools import chain
+from pattern.en import sentiment
+import indicoio
+indicoio.config.api_key = 'f40bb2f1a1746e98919452261d38003a'
 
 class Transcript():
     ''' Stores a debate transcript and all relevant information for use in predictive
@@ -268,3 +271,50 @@ class Transcript():
             count[participant] = [words[participant], mentions[participant], noises[participant]]
 
         return count
+
+    def get_sentiment(self, parsed, participants):
+        ''' Calculate semtiment values for each line of each participant.
+
+            Returns dictionary of lists containing:
+            [sentiment (pattern), sentiment (indico), political sentiment (indico)]
+        '''
+
+        senti_patt = {}
+        senti_indi = {}
+        poli_senti = {}
+        senti = 0
+        average_count = 0
+
+        for participant in participants:
+            senti_patt[participant] = 0
+            senti_indi[participant] = 0
+            poli_senti[participant] = 0
+
+        for participant in parsed.keys():
+            for line in parsed[participant]:
+                senti += sentiment(line)
+                average_count += 1
+            senti_patt[participant] = senti/average_count
+
+        senti = 0
+        average_count = 0
+
+        for participant in parsed.keys():
+            for line in parsed[participant]:
+                senti += indicoio.sentiment(line)
+                average_count += 1
+            senti_indi[participant] = senti/average_count
+
+        senti = 0
+        average_count = 0
+
+        for participant in parsed.keys():
+            for line in parsed[participant]:
+                senti += indicoio.political(line)
+                average_count += 1
+            poli_senti[participant] = senti/average_count
+
+        for participant in participants:
+            sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
+
+        return sentiments
