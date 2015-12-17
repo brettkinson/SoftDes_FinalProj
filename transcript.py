@@ -17,15 +17,15 @@ class Transcript():
             parsed: dictionary of lists of paragraphs spoken mapped to participants
             counts: dictionary of lists of word counts, name mentions, applause, mapped to participants
             sentiments: dictionary of lists of averages of political and general sentiment mapped to participants
-
     '''
     def __init__(self, url):
 
-        html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=110758`').read()
+        html = urllib.urlopen(url).read()
         soup = BeautifulSoup(html)
         page = soup.findAll('td')
 
         transcript = self.get_transcript(page)
+<<<<<<< HEAD
         self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice', 'former', 'moderator ']
         self.text = self.clean_transcript(transcript, titles)
         self.participants = self.get_people(page, titles)
@@ -34,6 +34,17 @@ class Transcript():
         self.parsed = self.parse_transcript(participants, self.text)
         #self.counts =
         #self.sentiments 
+=======
+        self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ']
+        self.text = self.clean_transcript(transcript)
+        self.participants = self.get_people(page)
+        # self.moderators =
+        # self.candidates =
+        self.parsed = self.parse_transcript(self.participants, self.text)
+        self.counts = self.count_transcript(self.parsed, self.participants)
+        # self.sentiments =
+        # self.confidence =
+>>>>>>> 5e0043f0b6af328c6f06be55ef28beeef1718b89
 
     def get_transcript(self, page):
         ''' Finds main text of debate transcript on webpage.
@@ -52,7 +63,7 @@ class Transcript():
         for para in debateBody:
             text.append(para.findAll(text=True))
 
-        return [ele.lower() for ele in list(chain.from_iterable(text))]
+        return [ele.lower().encode('utf-8') for ele in list(chain.from_iterable(text))]
 
     def find_italic(self, page):
         ''' Find content of all italic tags within page, use number of occurences
@@ -83,7 +94,7 @@ class Transcript():
                     pass
 
         # Return list of content that appears more than twice
-        return [key for key in italics if italics[key] > 2]
+        return [key for key in italics if italics[key] > 1]
 
     def find_bold(self, page):
         ''' Find content of all bold tags within page, use number of occurences
@@ -114,7 +125,7 @@ class Transcript():
                 except:
                     pass
 
-        return [key for key in bolds if bolds[key] > 2]
+        return [key for key in bolds if bolds[key] > 1]
 
     def find_normal(self, page):
         ''' Find content of paragraph up to first period or colon, in order to
@@ -124,10 +135,10 @@ class Transcript():
         '''
         normals = {}
 
-        text = get_transcript(page)
+        text = self.get_transcript(page)
         for line in text:
             # Find and remove occurences of standard titles
-            for title in titles:
+            for title in self.titles:
                 line = line.replace(title, '').strip('"()').lower()
 
             # Find first occurence of period or colon
@@ -152,13 +163,13 @@ class Transcript():
             else:
                 normals[nele] = 1
 
-        return [key for key in normals if normals[key] > 2]
+        return [key for key in normals if normals[key] > 1]
 
-    def get_people(page, titles):
+    def get_people(self, page):
 
-        bolds = find_bold(page)
-        italics = find_italic(page)
-        normals = find_normal(page)
+        bolds = self.find_bold(page)
+        italics = self.find_italic(page)
+        normals = self.find_normal(page)
         people = []
 
         if bolds == [] and italics == []:
@@ -172,18 +183,18 @@ class Transcript():
                 peeps = bolds
 
             for name in peeps:
-                for title in titles:
+                for title in self.titles:
                     ind = name.find(title)
                     if ind == -1:
                         start = 0
                     else:
                         start = ind + len(title)
 
-                people.append(name[start:-1].strip(':,.').lower())
+                people.append(name[start:-1].strip(':,.').lower().encode('utf-8'))
 
         return people
 
-    def clean_transcript(self, transcript, titles):
+    def clean_transcript(self, transcript):
         ''' Remove all titles from the transcript.
 
             Return cleaned transcript.
@@ -192,7 +203,7 @@ class Transcript():
 
         # Remove titles from transcript
         for line in transcript:
-            for title in titles:
+            for title in self.titles:
                 line = line.replace(title, '')
 
             clean.append(line)
@@ -265,6 +276,7 @@ class Transcript():
                 # Count applause or laughter
                 if 'applause' in line or 'laughter' in line:
                     noises[participant] += 1
+                    parsed[participant].remove(line)
 
         # Combine dictionaries into one counting dict
         for participant in participants:
@@ -290,12 +302,14 @@ class Transcript():
             senti_indi[participant] = 0
             poli_senti[participant] = 0
 
+
         for participant in parsed.keys():
             for line in parsed[participant]:
                 just_senti = sentiment(line)
                 senti += just_senti[0]
                 average_count += 1
             senti_patt[participant] = senti/average_count
+
 
         senti = 0
         average_count = 0
@@ -305,6 +319,7 @@ class Transcript():
                 senti += indicoio.sentiment(line)
                 average_count += 1
             senti_indi[participant] = senti/average_count
+
 
         conserv = 0
         lib = 0
@@ -318,8 +333,35 @@ class Transcript():
                 average_count += 1
             poli_senti[participant] = [conserv/average_count, lib/average_count]
 
+
         for participant in participants:
             sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
 
         return sentiments
 
+<<<<<<< HEAD
+=======
+    def mod_or_cand(self):
+        '''
+        '''
+        qs = {}
+        ps = {}
+        for participant in self.parsed.keys():
+            qs[participant] = 0
+            ps[participant] = 0
+
+        for participant in self.parsed.keys():
+            for line in self.parsed[participant]:
+                qs[participant] += len([1 for char in line if char == '?'])
+                ps[participant] += len([1 for char in line if char == '.'])
+
+        return qs, ps
+
+
+new_transcript = Transcript('http://www.presidency.ucsb.edu/ws/index.php?pid=29408')
+for participant in new_transcript.participants:
+    for line in new_transcript.parsed[participant]:
+            print participant.upper(), line
+print new_transcript.mod_or_cand()
+
+>>>>>>> 5e0043f0b6af328c6f06be55ef28beeef1718b89

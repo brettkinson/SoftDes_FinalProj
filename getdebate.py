@@ -1,11 +1,11 @@
 import urllib
 from BeautifulSoup import BeautifulSoup
 import re
-html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=102322').read()
+html = urllib.urlopen('http://www.presidency.ucsb.edu/debates.php').read()
 soup = BeautifulSoup(html)
 texts = soup.findAll(text=True)
 f  = open('transcript4.txt', 'w')
-
+print texts
 def visible(element):
     if element.parent.name in ['style', 'script', '[document]', 'head', 'title']:
         return False
