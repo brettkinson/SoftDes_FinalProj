@@ -1,5 +1,5 @@
 import urllib
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import re
 from itertools import chain
 from pattern.en import sentiment
@@ -29,11 +29,11 @@ class Transcript():
         self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice', 'former', 'moderator ']
         self.text = self.clean_transcript(transcript, titles)
         self.participants = self.get_people(page, titles)
-        self.moderators =
-        self.candidates =
+        #self.moderators = 
+        #self.candidates =
         self.parsed = self.parse_transcript(participants, self.text)
-        self.counts =
-        self.sentiments
+        #self.counts =
+        #self.sentiments 
 
     def get_transcript(self, page):
         ''' Finds main text of debate transcript on webpage.
@@ -322,3 +322,4 @@ class Transcript():
             sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
 
         return sentiments
+
