@@ -7,7 +7,7 @@ from time import sleep
 
 # indicoio.config.api_key = 'f40bb2f1a1746e98919452261d38003a'
 # f  = open('transcript.txt', 'w')
-html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=110758').read()
+html = urllib.urlopen('http://www.presidency.ucsb.edu/ws/index.php?pid=96683').read()
 soup = BeautifulSoup(html)
 page = soup.findAll('td')
 
@@ -159,13 +159,13 @@ def parse_transcript(participants, transcript):
     for participant in participants:
         parsed[participant] = []
 
-    parsed['Unclaimed'] = []
-    prev_par = 'Unclaimed'
+    parsed['unclaimed'] = []
+    prev_par = 'unclaimed'
     for line in transcript:
         claimed = False
         for participant in participants:
             if participant in line[0:len(participant)]:
-                parsed[participant].append(line)
+                parsed[participant].append(line[len(participant)+2:])
                 prev_par = participant
                 claimed = True
                 break
@@ -175,12 +175,52 @@ def parse_transcript(participants, transcript):
 
     return parsed
 
+def count_transcript(parsed, participants):
+    '''
+    '''
+    mentions = {}
+    words = {}
+    noises = {}
+    count = {}
+
+    for participant in participants:
+        mentions[participant] = 0
+        words[participant] = 0
+        noises[participant] = 0
+
+    for para in parsed.values():
+        for line in para:
+            for participant in participants:
+                if participant in line:
+                    mentions[participant] += 1
+
+    for participant in parsed.keys():
+        for line in parsed[participant]:
+            try:
+                words[participant] += len(line.split())
+            except:
+                pass
+
+            if 'applause' in line or 'laughter' in line:
+                noises[participant] += 1
+
+    for participant in participants:
+        count[participant] = [words[participant], mentions[participant], noises[participant]]
+
+    return count
+
 
 transcript = get_transcript(page)
 participants = get_people(page, titles)
 clean_transcript = clean_transcript(transcript, titles)
 parsed = parse_transcript(participants, clean_transcript)
+
 for key in parsed:
     for line in parsed[key]:
-        print key.upper(), line, '\n'
+        try:
+            print key, line, '\n'
+        except:
+            pass
+
+print count_transcript(parsed, participants)
 

@@ -16,5 +16,5 @@ def get_transcripts():
 
     return debate_links
 
-print len(get_transcripts())
+links = get_transcripts()
 
