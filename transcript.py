@@ -24,11 +24,11 @@ class Transcript():
 
         html = urllib.urlopen(url).read()
         soup = BeautifulSoup(html)
+        self.type = self.get_type(soup)
         self.page = soup.findAll('td')
         self.date = soup.find('span', {'class': 'docdate'}).text.encode('utf-8')
-        self.type = self.get_type(soup)
         transcript = self.get_transcript(self.page)
-        self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ', 'sen. ', 'rep. ']
+        self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ', 'sen. ', 'rep. ']
         self.text = self.clean_transcript(transcript)
         self.participants = self.get_people(self.page)
         self.candidates = []
@@ -36,7 +36,7 @@ class Transcript():
         self.parsed = self.parse_transcript(self.participants, self.text)
         self.counts = self.count_transcript(self.parsed, self.participants)
         self.mod_or_cand()
-        self.sentiments = self.get_sentiment(self.parsed, self.candidates)
+        # self.sentiments = self.get_sentiment(self.parsed, self.candidates)
         # self.confidence =
 
     def get_type(self, soup):
@@ -101,7 +101,7 @@ class Transcript():
                     pass
 
         # Return list of content that appears more than twice
-        return [key for key in italics if italics[key] > 1]
+        return [key.lower() for key in italics if italics[key] > 1]
 
     def find_bold(self, page):
         ''' Find content of all bold tags within page, use number of occurences
@@ -132,7 +132,7 @@ class Transcript():
                 except:
                     pass
 
-        return [key for key in bolds if bolds[key] > 1]
+        return [key.lower() for key in bolds if bolds[key] > 1]
 
     def find_normal(self, page):
         ''' Find content of paragraph up to first period or colon, in order to
@@ -184,6 +184,7 @@ class Transcript():
         # print normals
 
         if bolds == [] and italics == []:
+            print 'using normals'
             peeps = normals
             people = [peep for peep in peeps if 'applause' not in peep]
             people = [peep for peep in people if 'laughter' not in peep]
@@ -191,8 +192,10 @@ class Transcript():
         else:
             if bolds != []:
                 peeps = bolds
+                print 'using bolds'
             elif italics != []:
                 peeps = italics
+                print 'using italics'
 
             for name in peeps:
                 for title in self.titles:
@@ -201,7 +204,8 @@ class Transcript():
                         start = 0
                     else:
                         start = ind + len(title)
-                clean_name =name[start:-1].strip(':,.').lower().encode('utf-8')
+                        break
+                clean_name = name[start:-1].strip(':,.')
                 if clean_name != '':
                     people.append(clean_name)
         print self.date
@@ -236,14 +240,16 @@ class Transcript():
 
         parsed['unclaimed'] = []
         prev_par = 'unclaimed'
-
+        # print transcript
 
         for line in transcript:
             claimed = False
             # Search for participant in beginning of paragraph
             for participant in participants:
-                # Once found, break loop, set previous speaker
-                if participant in line[0:len(participant)]:
+                # Once found, break loop, set as previous speaker
+                # print participant, line[0:len(participant)+1], '           ..'
+                if participant in line[0:len(participant)+1]:
+                    # print participant, 'claimed'
                     parsed[participant].append(line[len(participant)+2:])
                     prev_par = participant
                     claimed = True
@@ -255,7 +261,7 @@ class Transcript():
             # for participant in parsed.keys():
             #     if parsed[participant] == []:
             #         del parsed[participant]
-
+        # print parsed
         return parsed
 
     def count_transcript(self, parsed, participants):
@@ -325,33 +331,56 @@ class Transcript():
 
 
         for participant in participants:
+            senti_max = 0
+            senti_min = 0
+            just_senti = 0
             for line in parsed[participant]:
                 just_senti = sentiment(line)
                 senti += just_senti[0]
                 average_count += 1
-            senti_patt[participant] = senti/average_count
+                if just_senti[0] > senti_max:
+                    senti_max = just_senti[0]
+                if just_senti[0] < senti_min:
+                    senti_min = just_senti[0]
+
+            senti_patt[participant] = [(senti/average_count+1)/2.0, (senti_max+1)/2.0, (senti_min+1)/2.0]
 
 
         for participant in participants:
+            senti_max = 0
+            senti_min = 0
             senti = 0
             average_count = 0
             it = 0
+            curr_senti = 0
             for line in parsed[participant]:
                 print it
                 try:
-                    senti += indicoio.sentiment(line)
+                    curr_senti = indicoio.sentiment(line)
+                    senti += curr_senti
                     average_count += 1
                 except:
                     pass
                 it += 1
-            senti_indi[participant] = senti/average_count
+
+                if curr_senti > senti_max:
+                    senti_max = curr_senti
+                if curr_senti < senti_min:
+                    senti_min = curr_senti
+            senti_indi[participant] = [senti/average_count, senti_max, senti_min]
 
 
 
         for participant in participants:
+            max_con = 0
+            min_con = 0
+            max_lib = 0
+            min_lib = 0
+
             conserv = 0
             lib = 0
             average_count = 0
+            poli_get['Conservative': 0, 'Liberal': 0]
             for line in parsed[participant]:
                 print it
                 try:
@@ -362,8 +391,18 @@ class Transcript():
                 except:
                     pass
                 it += 1
+                if max_con > poli_get['Conservative']:
+                    max_con = poli_get['Conservative']
+                if min_con < poli_get['Conservative']:
+                    min_con = poli_get['Conservative']
+                if max_lib > poli_get['Liberal']:
+                    max_lib = poli_get['Liberal']
+                if min_lib < poli_get['Liberal']:
+                    min_lib = poli_get['Liberal']
 
-            poli_senti[participant] = [conserv/average_count, lib/average_count]
+
+
+            poli_senti[participant] = [conserv/average_count, max_con, min_con, lib/average_count, max_lib, min_lib]
 
 
         for participant in participants:
@@ -422,7 +461,7 @@ class Transcript():
             for candidate in self.candidates:
                 print '    ', candidate, self.counts[candidate]
             return
-
+        print 'No header'
 
 
 
@@ -434,6 +473,7 @@ class Transcript():
             ps[participant] = 0
             lens[participant] = []
 
+        # print self.parsed
         for participant in self.parsed.keys():
             for line in self.parsed[participant]:
                 # print line
@@ -449,11 +489,11 @@ class Transcript():
 
         length_dev = std(lens.values())
         length_most = max(lens.values())
-        length_thresh = length_most-1.5*length_dev
+        length_thresh = length_most-(2.8*length_dev)
 
         count_dev = std([self.counts[participant][0] for participant in lens.keys()])
         count_most = max([self.counts[participant][0] for participant in lens.keys()])
-        count_thresh = count_most-1.5*count_dev
+        count_thresh = count_most-(1.5*count_dev)
 
         for participant in lens.keys():
             if lens[participant] < length_thresh or self.counts[participant][0] < count_thresh:
@@ -465,11 +505,11 @@ class Transcript():
             print '    ', candidate, self.counts[candidate]
 
 if __name__ == '__main__':
-    new_transcript = Transcript('http://www.presidency.ucsb.edu/ws/index.php?pid=76120')
+    new_transcript = Transcript('http://www.presidency.ucsb.edu/ws/index.php?pid=110756')
     # for participant in new_transcript.participants:
     #     for line in new_transcript.parsed[participant]:
                 # print participant.upper(), line
     # new_transcript.mod_or_cand()
     print new_transcript.candidates
     print new_transcript.counts
-    print new_transcript.sentiments
+    # print new_transcript.sentiments
