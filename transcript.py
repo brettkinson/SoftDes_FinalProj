@@ -6,7 +6,7 @@ from pattern.en import sentiment
 import indicoio
 from scipy import std
 
-indicoio.config.api_key = 'f40bb2f1a1746e98919452261d38003a'
+indicoio.config.api_key = '01106080f7ebca4b93caec65a04c4b61'
 
 class Transcript():
     ''' Stores a debate transcript and all relevant information for use in predictive
@@ -36,7 +36,7 @@ class Transcript():
         self.parsed = self.parse_transcript(self.participants, self.text)
         self.counts = self.count_transcript(self.parsed, self.participants)
         self.mod_or_cand()
-        # self.sentiments = self.get_sentiment(self.parsed, self.candidates)
+        self.sentiments = self.get_sentiment(self.parsed, self.candidates)
         # self.confidence =
 
     def get_type(self, soup):
@@ -380,7 +380,7 @@ class Transcript():
             conserv = 0
             lib = 0
             average_count = 0
-            poli_get['Conservative': 0, 'Liberal': 0]
+            poli_get = {'Conservative': 0, 'Liberal': 0}
             for line in parsed[participant]:
                 print it
                 try:
