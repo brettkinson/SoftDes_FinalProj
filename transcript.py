@@ -317,6 +317,7 @@ class Transcript():
             [sentiment (pattern), sentiment (indico), political sentiment (indico)]
         '''
 
+        #pre-allocating variables, etc
         sentiments = {}
         senti_patt = {}
         senti_indi = {}
@@ -329,7 +330,7 @@ class Transcript():
             senti_indi[participant] = 0
             poli_senti[participant] = 0
 
-
+        #running pattern sentiment on each line for each participant
         for participant in participants:
             senti_max = 0
             senti_min = 0
@@ -337,24 +338,24 @@ class Transcript():
             for line in parsed[participant]:
                 just_senti = sentiment(line)
                 senti += just_senti[0]
-                average_count += 1
-                if just_senti[0] > senti_max:
+                average_count += 1 #total line count, to use to average 
+                if just_senti[0] > senti_max: #finding max and min values
                     senti_max = just_senti[0]
                 if just_senti[0] < senti_min:
                     senti_min = just_senti[0]
 
-            senti_patt[participant] = [(senti/average_count+1)/2.0, (senti_max+1)/2.0, (senti_min+1)/2.0]
+            senti_patt[participant] = [(senti/average_count+1)/2.0, (senti_max+1)/2.0, (senti_min+1)/2.0] #writing average sentiment and max/min data to return
 
-
+        #running indico sentiment on each line for each participant
         for participant in participants:
             senti_max = 0
             senti_min = 0
             senti = 0
-            average_count = 0
-            it = 0
+            average_count = 0 
+            it = 0 #debug counter
             curr_senti = 0
             for line in parsed[participant]:
-                print it
+                #print it
                 try:
                     curr_senti = indicoio.sentiment(line)
                     senti += curr_senti
@@ -363,11 +364,11 @@ class Transcript():
                     pass
                 it += 1
 
-                if curr_senti > senti_max:
+                if curr_senti > senti_max: #finding max and min values
                     senti_max = curr_senti
                 if curr_senti < senti_min:
                     senti_min = curr_senti
-            senti_indi[participant] = [senti/average_count, senti_max, senti_min]
+            senti_indi[participant] = [senti/average_count, senti_max, senti_min] #writing average sentiment and max/min data to return
 
 
 
@@ -377,21 +378,22 @@ class Transcript():
             max_lib = 0
             min_lib = 0
 
+            #determining political sentiment for each participant
             conserv = 0
             lib = 0
             average_count = 0
-            poli_get = {'Conservative': 0, 'Liberal': 0}
+            poli_get = {'Conservative': 0, 'Liberal': 0} 
             for line in parsed[participant]:
                 print it
-                try:
-                    poli_get = indicoio.political(line)
-                    conserv += poli_get['Conservative']
+                try: #attempts to call poli sentiment function on each line
+                    poli_get = indicoio.political(line) 
+                    conserv += poli_get['Conservative'] #adds to each count
                     lib += poli_get['Liberal']
                     average_count += 1
                 except:
                     pass
                 it += 1
-                if max_con > poli_get['Conservative']:
+                if max_con > poli_get['Conservative']: #sets max and min values as it cycles through
                     max_con = poli_get['Conservative']
                 if min_con < poli_get['Conservative']:
                     min_con = poli_get['Conservative']
@@ -405,6 +407,7 @@ class Transcript():
             poli_senti[participant] = [conserv/average_count, max_con, min_con, lib/average_count, max_lib, min_lib]
 
 
+        #creating output dictionary with all data collected
         for participant in participants:
             sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
 
