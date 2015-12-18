@@ -4,6 +4,8 @@ import re
 from itertools import chain
 from pattern.en import sentiment
 import indicoio
+from scipy import std
+
 indicoio.config.api_key = 'f40bb2f1a1746e98919452261d38003a'
 
 class Transcript():
@@ -22,18 +24,34 @@ class Transcript():
 
         html = urllib.urlopen(url).read()
         soup = BeautifulSoup(html)
-        page = soup.findAll('td')
-
-        transcript = self.get_transcript(page)
-        self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ']
+        self.page = soup.findAll('td')
+        self.date = soup.find('span', {'class': 'docdate'}).text.encode('utf-8')
+        self.type = self.get_type(soup)
+        transcript = self.get_transcript(self.page)
+        self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'president ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ', 'sen. ', 'rep. ']
         self.text = self.clean_transcript(transcript)
-        self.participants = self.get_people(page)
-        # self.moderators =
-        # self.candidates =
+        self.participants = self.get_people(self.page)
+        self.candidates = []
+        self.moderators = []
         self.parsed = self.parse_transcript(self.participants, self.text)
         self.counts = self.count_transcript(self.parsed, self.participants)
-        # self.sentiments =
+        self.mod_or_cand()
+        self.sentiments = self.get_sentiment(self.parsed, self.candidates)
         # self.confidence =
+
+    def get_type(self, soup):
+        deb_type = soup.find('span', {'class': 'paperstitle'}).text.lower().encode('utf-8')
+
+        if 'democrat' in deb_type:
+            self.type = 'democrat'
+        elif 'republican' in deb_type:
+            self.type = 'republican'
+        elif 'vice' in deb_type:
+            self.type = 'vice'
+        else:
+            self.type = 'presidential'
+
+
 
     def get_transcript(self, page):
         ''' Finds main text of debate transcript on webpage.
@@ -161,15 +179,20 @@ class Transcript():
         normals = self.find_normal(page)
         people = []
 
+        # print bolds
+        # print italics
+        # print normals
+
         if bolds == [] and italics == []:
             peeps = normals
             people = [peep for peep in peeps if 'applause' not in peep]
             people = [peep for peep in people if 'laughter' not in peep]
+            people = [peep for peep in people if '\n' not in peep]
         else:
-            if italics != []:
-                peeps = italics
             if bolds != []:
                 peeps = bolds
+            elif italics != []:
+                peeps = italics
 
             for name in peeps:
                 for title in self.titles:
@@ -178,9 +201,10 @@ class Transcript():
                         start = 0
                     else:
                         start = ind + len(title)
-
-                people.append(name[start:-1].strip(':,.').lower().encode('utf-8'))
-
+                clean_name =name[start:-1].strip(':,.').lower().encode('utf-8')
+                if clean_name != '':
+                    people.append(clean_name)
+        print self.date
         return people
 
     def clean_transcript(self, transcript):
@@ -228,6 +252,10 @@ class Transcript():
             if not claimed:
                 parsed[prev_par].append(line)
 
+            # for participant in parsed.keys():
+            #     if parsed[participant] == []:
+            #         del parsed[participant]
+
         return parsed
 
     def count_transcript(self, parsed, participants):
@@ -263,9 +291,12 @@ class Transcript():
                     pass
 
                 # Count applause or laughter
-                if 'applause' in line or 'laughter' in line:
-                    noises[participant] += 1
-                    parsed[participant].remove(line)
+                try:
+                    if 'applause' in line or 'laughter' in line:
+                        noises[participant] += 1
+                        parsed[participant].remove(line)
+                except:
+                    pass
 
         # Combine dictionaries into one counting dict
         for participant in participants:
@@ -280,6 +311,7 @@ class Transcript():
             [sentiment (pattern), sentiment (indico), political sentiment (indico)]
         '''
 
+        sentiments = {}
         senti_patt = {}
         senti_indi = {}
         poli_senti = {}
@@ -292,7 +324,7 @@ class Transcript():
             poli_senti[participant] = 0
 
 
-        for participant in parsed.keys():
+        for participant in participants:
             for line in parsed[participant]:
                 just_senti = sentiment(line)
                 senti += just_senti[0]
@@ -300,26 +332,37 @@ class Transcript():
             senti_patt[participant] = senti/average_count
 
 
-        senti = 0
-        average_count = 0
-
-        for participant in parsed.keys():
+        for participant in participants:
+            senti = 0
+            average_count = 0
+            it = 0
             for line in parsed[participant]:
-                senti += indicoio.sentiment(line)
-                average_count += 1
+                print it
+                try:
+                    senti += indicoio.sentiment(line)
+                    average_count += 1
+                except:
+                    pass
+                it += 1
             senti_indi[participant] = senti/average_count
 
 
-        conserv = 0
-        lib = 0
-        average_count = 0
 
-        for participant in parsed.keys():
+        for participant in participants:
+            conserv = 0
+            lib = 0
+            average_count = 0
             for line in parsed[participant]:
-                poli_get = indicoio.political(line)
-                conserv += poli_get['conservative']
-                lib += poli_get['liberal']
-                average_count += 1
+                print it
+                try:
+                    poli_get = indicoio.political(line)
+                    conserv += poli_get['Conservative']
+                    lib += poli_get['Liberal']
+                    average_count += 1
+                except:
+                    pass
+                it += 1
+
             poli_senti[participant] = [conserv/average_count, lib/average_count]
 
 
@@ -328,26 +371,105 @@ class Transcript():
 
         return sentiments
 
+    def get_that_header(self):
+        ''' Find header tag for future use
+        '''
+
+        header = []
+        potent_mod = []
+        potent_cand = []
+
+        # Find content of all bold tags within debate body
+        for ele in self.page:
+            if (ele.find('p') is not None) and (ele.find('p') is not None):
+                debateBody = ele.findChildren('span', {'class': 'displaytext'}) + ele.findAll('p')
+                break
+
+        for para in debateBody:
+            if para.find('b') is not None:
+                header.append(para.findChildren('b', text=True))
+
+        # print header
+
+        for ele in header:
+            mod_ele = [subele.lower().encode('utf-8') for subele in ele]
+            if 'moderator' in mod_ele[0] or 'host' in mod_ele[0]:
+                for human in mod_ele[1:]:
+                    potent_mod.append(human)
+
+            elif 'participant' in mod_ele[0]:
+                for human in mod_ele[1:]:
+                    potent_cand.append(human)
+
+        return  potent_cand, potent_mod
+
+
     def mod_or_cand(self):
         '''
         '''
+
+        potent_cand, potent_mod = self.get_that_header()
+
+        if potent_cand != [] and potent_mod != []:
+            print "There's a header"
+            for participant in self.parsed.keys():
+                for ele in potent_cand:
+                    if participant in ele:
+                        self.candidates.append(participant)
+                for ele in potent_mod:
+                    if participant in potent_mod:
+                        self.moderators.append(participant)
+            for candidate in self.candidates:
+                print '    ', candidate, self.counts[candidate]
+            return
+
+
+
+
         qs = {}
         ps = {}
+        lens = {}
         for participant in self.parsed.keys():
             qs[participant] = 0
             ps[participant] = 0
+            lens[participant] = []
 
         for participant in self.parsed.keys():
             for line in self.parsed[participant]:
-                qs[participant] += len([1 for char in line if char == '?'])
-                ps[participant] += len([1 for char in line if char == '.'])
+                # print line
+                # qs[participant] += len([1 for char in line if char == '?'])
+                # ps[participant] += len([1 for char in line if char == '.'])
+                lens[participant].append(len(line.split()))
 
-        return qs, ps
+        for participant in lens.keys():
+            if lens[participant] == [] or participant == 'unclaimed':
+                del lens[participant]
+            else:
+                lens[participant] = sum(lens[participant])/len(lens[participant])
 
+        length_dev = std(lens.values())
+        length_most = max(lens.values())
+        length_thresh = length_most-1.5*length_dev
 
-new_transcript = Transcript('http://www.presidency.ucsb.edu/ws/index.php?pid=29408')
-for participant in new_transcript.participants:
-    for line in new_transcript.parsed[participant]:
-            print participant.upper(), line
-print new_transcript.mod_or_cand()
+        count_dev = std([self.counts[participant][0] for participant in lens.keys()])
+        count_most = max([self.counts[participant][0] for participant in lens.keys()])
+        count_thresh = count_most-1.5*count_dev
 
+        for participant in lens.keys():
+            if lens[participant] < length_thresh or self.counts[participant][0] < count_thresh:
+                self.moderators.append(participant)
+            else:
+                self.candidates.append(participant)
+
+        for candidate in self.candidates:
+            print '    ', candidate, self.counts[candidate]
+
+if __name__ == '__main__':
+    new_transcript = Transcript('http://www.presidency.ucsb.edu/ws/index.php?pid=76120')
+    # for participant in new_transcript.participants:
+    #     for line in new_transcript.parsed[participant]:
+                # print participant.upper(), line
+    # new_transcript.mod_or_cand()
+    print new_transcript.candidates
+    print new_transcript.counts
+    print new_transcript.sentiments
