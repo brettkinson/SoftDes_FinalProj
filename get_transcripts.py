@@ -5,11 +5,12 @@ import re
 from itertools import chain
 from time import sleep
 from transcript import Transcript
+from pickle import dump, load
 
 class Debater():
     '''Separates information from a transcript'''
 
-    def __init__(self, transcript, name, avg_words, avg_mentions, avg_accessory):#, avg_gensent, avg_polisent):
+    def __init__(self, transcript, name, avg_words, avg_mentions, avg_accessory, avg_gensent, avg_polisent):
         self.name = name
         self.date = transcript.date
         self.type = transcript.type
@@ -74,8 +75,12 @@ comma = ', '
 links = get_transcripts()
 
 transcripts = [Transcript(url) for url in [links[12], links[13], links[14], links[36], links[37], links[38], links[75], links[76], links[77], links[81], links[82], links[83]] + links[104:128]]
-debaters = []
 
+d = open('dump.txt', 'w')
+dump(transcripts, d)
+d.close()
+
+debaters = []
 for transcript in transcripts:
     debaters += decompose_transcript(transcript)
 

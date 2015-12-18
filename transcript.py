@@ -25,8 +25,8 @@ class Transcript():
         html = urllib.urlopen(url).read()
         soup = BeautifulSoup(html)
         self.type = self.get_type(soup)
-        self.page = soup.findAll('td')
         self.date = soup.find('span', {'class': 'docdate'}).text.encode('utf-8')
+        self.page = soup.findAll('td')
         transcript = self.get_transcript(self.page)
         self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ', 'sen. ', 'rep. ']
         self.text = self.clean_transcript(transcript)
@@ -117,7 +117,6 @@ class Transcript():
                 debateBody = ele.findChildren('span', {'class': 'displaytext'}) + ele.findAll('p')
                 break
 
-        #
         for para in debateBody:
             if para.find('b') is not None:
 
@@ -178,10 +177,6 @@ class Transcript():
         italics = self.find_italic(page)
         normals = self.find_normal(page)
         people = []
-
-        # print bolds
-        # print italics
-        # print normals
 
         if bolds == [] and italics == []:
             print 'using normals'
@@ -465,20 +460,14 @@ class Transcript():
 
 
 
-        qs = {}
-        ps = {}
+
         lens = {}
         for participant in self.parsed.keys():
-            qs[participant] = 0
-            ps[participant] = 0
             lens[participant] = []
 
         # print self.parsed
         for participant in self.parsed.keys():
             for line in self.parsed[participant]:
-                # print line
-                # qs[participant] += len([1 for char in line if char == '?'])
-                # ps[participant] += len([1 for char in line if char == '.'])
                 lens[participant].append(len(line.split()))
 
         for participant in lens.keys():
