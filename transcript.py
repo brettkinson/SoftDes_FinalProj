@@ -21,12 +21,17 @@ class Transcript():
             sentiments: dictionary of lists of averages of political and general sentiment mapped to participants
     '''
     def __init__(self, url):
+        ''' Init script, runs methods to create full Transcript object.
+
+            Input:
+                url: (str) url of debate transcript to parsed
+        '''
 
         html = urllib.urlopen(url).read()
         soup = BeautifulSoup(html)
         self.type = self.get_type(soup)
-        self.page = soup.findAll('td')
         self.date = soup.find('span', {'class': 'docdate'}).text.encode('utf-8')
+        self.page = soup.findAll('td')
         transcript = self.get_transcript(self.page)
         self.titles = ['governor ', 'senator ', 'state ', 'representative ', 'house ', 'mr. ', 'mrs. ', 'ms. ', 'democratic ', 'republican ', 'independent ', 'admiral ', 'vice ', 'former ', 'moderator ', 'sen. ', 'rep. ']
         self.text = self.clean_transcript(transcript)
@@ -40,6 +45,11 @@ class Transcript():
         # self.confidence =
 
     def get_type(self, soup):
+        ''' Find header text to classify debate.
+
+            Input:
+            page: (BeautifulSoup object) text of page
+        '''
         deb_type = soup.find('span', {'class': 'paperstitle'}).text.lower().encode('utf-8')
 
         if 'democrat' in deb_type:
@@ -56,7 +66,11 @@ class Transcript():
     def get_transcript(self, page):
         ''' Finds main text of debate transcript on webpage.
 
-            Returns a list of all paragraphs in the transcript.
+            Input:
+                page: (BeautifulSoup object) text of page
+
+            Returns:
+                (list) all paragraphs in the transcript.
         '''
         text = []
 
@@ -76,7 +90,11 @@ class Transcript():
         ''' Find content of all italic tags within page, use number of occurences
             to detect names of participants.
 
-            Returns list of participants.
+            Input:
+                page: (BeautifulSoup object) text of page
+
+            Returns:
+                (list) italic namess
         '''
         italics = {}
 
@@ -107,7 +125,11 @@ class Transcript():
         ''' Find content of all bold tags within page, use number of occurences
             to detect names of participants.
 
-            Returns list of participants.
+            Input:
+                page: (BeautifulSoup object) text of page
+
+            Returns:
+                (list) boldface names
         '''
         bolds = {}
 
@@ -117,7 +139,7 @@ class Transcript():
                 debateBody = ele.findChildren('span', {'class': 'displaytext'}) + ele.findAll('p')
                 break
 
-        #
+        # Create a dictionary to count frequency of content
         for para in debateBody:
             if para.find('b') is not None:
 
@@ -138,7 +160,11 @@ class Transcript():
         ''' Find content of paragraph up to first period or colon, in order to
             identify participants in the debate.
 
-            Returns list of participants.
+            Input:
+                page: (BeautifulSoup object) text of page
+
+            Returns:
+                (list) identified names
         '''
         normals = {}
 
@@ -173,16 +199,21 @@ class Transcript():
         return [key for key in normals if normals[key] > 1]
 
     def get_people(self, page):
+        ''' Use results of name searches to determine final participants.
 
+            Input:
+                page: (BeautifulSoup object) text of page
+
+            Returns:
+                (list) final participants
+        '''
+        # Find potential name options
         bolds = self.find_bold(page)
         italics = self.find_italic(page)
         normals = self.find_normal(page)
         people = []
 
-        # print bolds
-        # print italics
-        # print normals
-
+        # Decide between parsing method
         if bolds == [] and italics == []:
             print 'using normals'
             peeps = normals
@@ -197,6 +228,7 @@ class Transcript():
                 peeps = italics
                 print 'using italics'
 
+            # Remove titles from names
             for name in peeps:
                 for title in self.titles:
                     ind = name.find(title)
@@ -208,13 +240,17 @@ class Transcript():
                 clean_name = name[start:-1].strip(':,.')
                 if clean_name != '':
                     people.append(clean_name)
+
         print self.date
         return people
 
     def clean_transcript(self, transcript):
         ''' Remove all titles from the transcript.
 
-            Return cleaned transcript.
+            Input:
+                transcript: (list of lists) transcript text
+            Returns:
+                (list of lists) cleaned transcript.
         '''
         clean = []
 
@@ -228,9 +264,15 @@ class Transcript():
         return clean
 
     def parse_transcript(self, participants, transcript):
-        ''' Identify the speaker of each paragraph in the transcript.
+        ''' Identify the speaker of each paragraph in the transcript, and
+            organize that information information a list.
 
-            Return a dictionary of list of transcript lines mapped to each participant.
+            Inputs:
+                participant: (list) debate participants
+                transcript: (list of lists) debate text
+
+            Returns:
+                parsed: (dict) dictionary mapping lines to speakers
         '''
         parsed = {}
 
@@ -240,35 +282,34 @@ class Transcript():
 
         parsed['unclaimed'] = []
         prev_par = 'unclaimed'
-        # print transcript
 
         for line in transcript:
             claimed = False
             # Search for participant in beginning of paragraph
             for participant in participants:
                 # Once found, break loop, set as previous speaker
-                # print participant, line[0:len(participant)+1], '           ..'
                 if participant in line[0:len(participant)+1]:
                     # print participant, 'claimed'
                     parsed[participant].append(line[len(participant)+2:])
                     prev_par = participant
                     claimed = True
                     break
+
             # If no participant found, add to previous participant
             if not claimed:
                 parsed[prev_par].append(line)
 
-            # for participant in parsed.keys():
-            #     if parsed[participant] == []:
-            #         del parsed[participant]
-        # print parsed
         return parsed
 
     def count_transcript(self, parsed, participants):
         ''' Calculate all counting decision variables.
 
-            Returns dictionary of lists which contain:
-                [word count, name mentions, applause and laughter]
+            Inputs:
+                participants: (list) debate participants
+                parsed: (dict of lists) parsed transcript
+
+            Returns:
+                (dict of lists) with word count, name mentions, applause and laughter
         '''
         mentions = {}
         words = {}
@@ -313,10 +354,16 @@ class Transcript():
     def get_sentiment(self, parsed, participants):
         ''' Calculate semtiment values for each line of each participant.
 
-            Returns dictionary of lists containing:
-            [sentiment (pattern), sentiment (indico), political sentiment (indico)]
+            Inputs:
+                parsed: (dict of lists) mapping line to speaker
+                participants: (list) every speaker in debate
+
+            Returns:
+                (dict of lists) containing sentiment (pattern), sentiment (indico),
+                political sentiment (indico)]
         '''
 
+        # Pre-allocating variables, etc
         sentiments = {}
         senti_patt = {}
         senti_indi = {}
@@ -329,7 +376,7 @@ class Transcript():
             senti_indi[participant] = 0
             poli_senti[participant] = 0
 
-
+        # Running pattern sentiment on each line for each participant
         for participant in participants:
             senti_max = 0
             senti_min = 0
@@ -337,21 +384,22 @@ class Transcript():
             for line in parsed[participant]:
                 just_senti = sentiment(line)
                 senti += just_senti[0]
-                average_count += 1
-                if just_senti[0] > senti_max:
+                average_count += 1 # Total line count, to use to average
+                if just_senti[0] > senti_max: #Finding max and min values
                     senti_max = just_senti[0]
                 if just_senti[0] < senti_min:
                     senti_min = just_senti[0]
 
+            # Writing average sentiment and max/min data to return
             senti_patt[participant] = [(senti/average_count+1)/2.0, (senti_max+1)/2.0, (senti_min+1)/2.0]
 
-
+        # Running indico sentiment on each line for each participant
         for participant in participants:
             senti_max = 0
             senti_min = 0
             senti = 0
             average_count = 0
-            it = 0
+            it = 0 # Debug counter
             curr_senti = 0
             for line in parsed[participant]:
                 print it
@@ -363,13 +411,13 @@ class Transcript():
                     pass
                 it += 1
 
+                # Finding max and min values
                 if curr_senti > senti_max:
                     senti_max = curr_senti
                 if curr_senti < senti_min:
                     senti_min = curr_senti
-            senti_indi[participant] = [senti/average_count, senti_max, senti_min]
 
-
+            senti_indi[participant] = [senti/average_count, senti_max, senti_min] #writing average sentiment and max/min data to return
 
         for participant in participants:
             max_con = 0
@@ -377,21 +425,23 @@ class Transcript():
             max_lib = 0
             min_lib = 0
 
+            # Determining political sentiment for each participant
             conserv = 0
             lib = 0
             average_count = 0
             poli_get = {'Conservative': 0, 'Liberal': 0}
             for line in parsed[participant]:
                 print it
-                try:
+                try: # Attempts to call poli sentiment function on each line
                     poli_get = indicoio.political(line)
-                    conserv += poli_get['Conservative']
+                    conserv += poli_get['Conservative'] # Adds to each count
                     lib += poli_get['Liberal']
                     average_count += 1
                 except:
                     pass
+
                 it += 1
-                if max_con > poli_get['Conservative']:
+                if max_con > poli_get['Conservative']: # Sets max and min values as it cycles through
                     max_con = poli_get['Conservative']
                 if min_con < poli_get['Conservative']:
                     min_con = poli_get['Conservative']
@@ -400,18 +450,19 @@ class Transcript():
                 if min_lib < poli_get['Liberal']:
                     min_lib = poli_get['Liberal']
 
-
-
             poli_senti[participant] = [conserv/average_count, max_con, min_con, lib/average_count, max_lib, min_lib]
 
-
+        # Creating output dictionary with all data collected
         for participant in participants:
             sentiments[participant] = [senti_patt[participant], senti_indi[participant], poli_senti[participant]]
 
         return sentiments
 
     def get_that_header(self):
-        ''' Find header tag for future use
+        ''' Find header tag for name recognition.
+
+            Returns:
+                (lists) potential moderators, potential candidates
         '''
 
         header = []
@@ -428,14 +479,14 @@ class Transcript():
             if para.find('b') is not None:
                 header.append(para.findChildren('b', text=True))
 
-        # print header
-
         for ele in header:
             mod_ele = [subele.lower().encode('utf-8') for subele in ele]
+            # Find text in line with bold 'moderator' tag
             if 'moderator' in mod_ele[0] or 'host' in mod_ele[0]:
                 for human in mod_ele[1:]:
                     potent_mod.append(human)
 
+            # Find text in line with bold 'participant' tag
             elif 'participant' in mod_ele[0]:
                 for human in mod_ele[1:]:
                     potent_cand.append(human)
@@ -444,13 +495,19 @@ class Transcript():
 
 
     def mod_or_cand(self):
-        '''
+        ''' Distinguish between participants as either moderators/other and
+            candidates.
+
+            Returns:
+                Modifies candidates and moderators attributes.
         '''
 
+        # Attempt to use information from header first
         potent_cand, potent_mod = self.get_that_header()
 
         if potent_cand != [] and potent_mod != []:
             print "There's a header"
+            #Check if participant in the header
             for participant in self.parsed.keys():
                 for ele in potent_cand:
                     if participant in ele:
@@ -458,35 +515,31 @@ class Transcript():
                 for ele in potent_mod:
                     if participant in potent_mod:
                         self.moderators.append(participant)
+
             for candidate in self.candidates:
                 print '    ', candidate, self.counts[candidate]
             return
+
+        # If there's no header, proceed with the following semi-statistical analysis
         print 'No header'
-
-
-
-        qs = {}
-        ps = {}
         lens = {}
         for participant in self.parsed.keys():
-            qs[participant] = 0
-            ps[participant] = 0
             lens[participant] = []
 
-        # print self.parsed
+        # Calculate length of participant phrases
         for participant in self.parsed.keys():
             for line in self.parsed[participant]:
-                # print line
-                # qs[participant] += len([1 for char in line if char == '?'])
-                # ps[participant] += len([1 for char in line if char == '.'])
                 lens[participant].append(len(line.split()))
 
         for participant in lens.keys():
+            # Delete extraneous participants
             if lens[participant] == [] or participant == 'unclaimed':
                 del lens[participant]
+            # Calculate average phrase length
             else:
                 lens[participant] = sum(lens[participant])/len(lens[participant])
 
+        # Calculate standard deviations, threshold for word count, phrase length
         length_dev = std(lens.values())
         length_most = max(lens.values())
         length_thresh = length_most-(2.8*length_dev)
@@ -495,6 +548,7 @@ class Transcript():
         count_most = max([self.counts[participant][0] for participant in lens.keys()])
         count_thresh = count_most-(1.5*count_dev)
 
+        # Filter out moderators from candidates
         for participant in lens.keys():
             if lens[participant] < length_thresh or self.counts[participant][0] < count_thresh:
                 self.moderators.append(participant)
