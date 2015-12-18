@@ -1,6 +1,6 @@
 y1960 = [3, -1, 0, -1, 0, 0]		#Arranged Kennedy,Nixon
 y1976 = [0, 4, 1, -3, 2, 3]			#Arranged Carter, Ford
-y1980 = [5, -7, 4, 2]				#Arranged Reagan, Carter
+y1980 = [5, -7, 4, 2]				#Arranged Reagan, Anderson, Reagan, Carter
 y1984 = [2, -1, -1, 2]				#Arranged Reagan, Mondale
 y1988 = [-2, 1, 1, -2]				#Arranged Bush, Dukakis
 y1992 = [-4, -1, 5, 1, -2, 0, -4, 2, 2]		#Arranged Clinton, Bush, Perot
