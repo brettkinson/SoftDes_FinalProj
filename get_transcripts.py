@@ -114,5 +114,8 @@ for transcript in transcripts:
 for debater in debaters:
     f.write(debater.name + comma + debater.date + '\n' + str(debater.word_count) + comma + str(debater.mention_count) + comma + str(debater.accessory_count) + '\n' + comma + str(debater.general_sentiment) + comma + str(debater.political_sentiment) +'\n')
 
+#^^ I see what you're doing with the comma string, however, it is worth pointing out that 
+#there are more characters in the word "comma" than are necessary to type ', '
+
 f.close()
 

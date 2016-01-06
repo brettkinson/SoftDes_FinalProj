@@ -44,6 +44,11 @@ class Transcript():
         self.sentiments = self.get_sentiment(self.parsed, self.candidates)
         # self.confidence =
 
+        #^^It's a good idea to either let me know when I'd want to uncoment and use this
+        #or delete it after the next code cleanup.
+
+
+
     def get_type(self, soup):
         ''' Find header text to classify debate.
 
@@ -103,6 +108,9 @@ class Transcript():
             if (ele.find('p') is not None) and (ele.find('p') is not None):
                 debateBody = ele.findChildren('span', {'class': 'displaytext'}) + ele.findAll('p')
                 break
+
+        #^^I suspect that the second condition of the logic 'and' above should be a 'br' instead of 'p'
+        #otherwise, the statement seems redundant - and the error is repeated below.
 
         # Create a dictionary to count frequency of content
         for para in debateBody:
@@ -439,6 +447,9 @@ class Transcript():
                     average_count += 1
                 except:
                     pass
+                    #this might be the first time that you have had to use 'pass' a lot
+                    #sometimes that can feel uncomfortable.
+                    #if you are following a for loop, the command 'continue' is an alternative.
 
                 it += 1
                 if max_con > poli_get['Conservative']: # Sets max and min values as it cycles through
@@ -567,3 +578,4 @@ if __name__ == '__main__':
     print new_transcript.candidates
     print new_transcript.counts
     # print new_transcript.sentiments
+    #Is there some trash above to delete?
